@@ -1,0 +1,21 @@
+# Sample UVFITS writer header file.
+# blank lines and lines beginning with '#' are ignored. Do not leave spaces in empty lines.
+# line format: key value comments
+FIELDNAME testfield
+TELESCOPE MWA   # telescope name like MWA, MOST, ATCA etc
+N_SCANS   10    # number of scans (time instants) in correlation products
+N_INPUTS  16    # number of inputs into the correlation products
+N_CHANS   128   # number of channels in spectrum
+CORRTYPE  B     # correlation type to use. 'C'(cross), 'B'(both), or 'A'(auto)
+INT_TIME  5.0   # integration time of scan in seconds
+FREQCENT  150.0 # observing center freq in MHz
+BANDWIDTH 1.28  # total bandwidth in MHz
+HA_HRS    -1.0  # the HA at the *start* of the scan. (hours) use this or RA_HRS below
+RA_HRS    0.0   # the RA of the desired phase centre (hours)
+DEC_DEGS  -60.0 # the DEC of the desired phase centre (degs)
+DATE      20070921  # YYYYMMDD
+TIME      161300    # HHMMSS
+INVERT_FREQ 0   # 1 if the freq decreases with channel number
+CONJUGATE 0     # conjugate the raw data to fix sign convention problem if necessary
+GEOM_CORRECT 1  # apply geometric phase corrections when 1. Don't when 0
+POL_PRODS XXYYXYYX	# optional list of pol products. RRLLRLLR, II etc.

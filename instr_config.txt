@@ -1,0 +1,75 @@
+# this file maps inputs into the correlator to antennas and polarisations.
+# in addition, a cable length "delta" (in meters) can be specified
+# the first column is not actually used by the uvfits writer, but is there as
+# an aide to human readers. Inputs are ordered from 0 to n_inp-1
+# lines beginning with '#' and blank lines are ignored. Do not leave spaces in empty lines.
+#
+# Input flagging: put a 1 in the flag column to flag all data from that input.
+#                 0 means no flag.
+#
+# INPUT   ANTENNA   POL     DELTA   FLAG 
+0         12        Y        193.5  0  # receiver 1 tile 13
+1         12        X        195.0  0  # 
+2         8         Y        125.0  0  # tile 9
+3         8         X        125.0  0 
+4         4         Y        167.0  0  # tile 5
+5         4         X        167.0  0
+6         0         Y        156.0  0  # tile 1
+7         0         X        156.0  0
+8         28        Y        176.5  0  # tile 29
+9         28        X        176.5  0
+10        24        Y        189.0  0  # tile 25
+11        24        X        189.0  0
+12        20        Y        168.0  0  # tile 21
+13        20        X        168.0  0
+14        16        Y        199.7  0  # tile 17
+15        16        X        199.7  0
+16        13        Y        143.0  0  # receiver 2 tile 14
+17        13        X        143.0  0
+18        9         Y        183.0  0  # tile 10
+19        9         X        183.0  0
+20        5         Y        146.0  0  # tile 6
+21        5         X        146.0  0
+22        1         Y        194.0  0  # tile 2
+23        1         X        194.0  0
+24        29        Y        106.3  0  # tile 30
+25        29        X        106.3  0
+26        25        Y        120.0  0  # tile 26
+27        25        X        120.0  0  #
+28        21        Y        139.0  0  # tile 22
+29        21        X        139.0  0
+30        17        Y        107.5  0  # tile 18
+31        17        X        107.5  0
+32        14        Y        112.0  0  # receiver 3 tile 15
+33        14        X        112.0  0  #
+34        10        Y        172.5  0  # tile 11
+35        10        X        172.5  0
+36        6         Y        189.0  0  # tile 7
+37        6         X        189.0  0
+38        2         Y        167.0  0  # tile 3
+39        2         X        167.0  0
+40        30        Y        135.0  0  # tile 31
+41        30        X        135.0  0
+42        26        Y        131.0  0  # tile 27
+43        26        X        131.0  0
+44        22        Y        181.0  0  # tile 23
+45        22        X        181.0  0
+46        18        Y        110.5  0  # tile 19
+47        18        X        110.5  0
+48        15        Y        126.0  0  # receiver 4 tile 16
+49        15        X        126.0  0
+50        11        Y        155.0  0  # tile 12
+51        11        X        155.0  0
+52        7         Y        134.5  0  # tile 8
+53        7         X        136.0  0
+54        3         Y        137.0  0  # tile 4
+55        3         X        137.0  0
+56        31        Y        194.0  0  # tile 32
+57        31        X        194.0  0
+58        27        Y        115.0  0  # tile 28
+59        27        X        115.0  0
+60        23        Y        176.0  0  # tile 24
+61        23        X        176.0  0
+62        19        Y        149.0  0  # tile 20
+63        19        X        149.0  0
+
