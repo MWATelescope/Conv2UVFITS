@@ -7,7 +7,7 @@ This repo also contains uvfits.c, which is a fairly self-contained library for r
 
 ## Requirements
 cfitsio v3, Starlink PAL (Positional astronomy library).
-Ubuntu packages: libcfitsio3-dev libstarlink-pal-dev build-essential
+Ubuntu packages: libcfitsio-dev libstarlink-pal-dev build-essential
 
 ## Compiling
 make corr2uvfits
