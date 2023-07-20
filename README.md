@@ -33,5 +33,7 @@ Mapping of logical inputs to actual antennas is done in the metadata files as de
 The implicit dimensions of the binary data in the cross correlation file is [time][product_index][channel], again where channel changes most quickly and time most slowly.
 Cross correlations are single precision float complex numbers. The implicit ordering of inputs to products is inp1-inp2, inp1-inp3, ... inp2-inp3, inp2-inp4 etc.
 
+Note that the code does not read ahead or look at the size of the input data, so named pipes can be used for the .LACSPC and .LCCSPC files to avoid creating intermediate files if desired in a streaming environment.
+
 ## Example usage
 
