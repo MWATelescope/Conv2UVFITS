@@ -24,7 +24,7 @@ There are 3 metadata input files required:
 Example files with the formatting etc are included in this repo. The actual files can be called anything and are specified on the command line, but default names are looked for also.
 
 ## Raw data format
-The raw data are in "L-file" format (the origins of which are lost to history, but passed through Frank Briggs to the MWA project).  L-files are raw binary single-precision float files, with separate files for auto and cross correlations. Historically, these files have had suffixes ".LACSPC" and ".LCCSPC", but the files can be called anything.
+The raw data are in "L-file" format (the origins of which are lost to history, but passed through Frank Briggs to the MWA project).  L-files are raw binary single-precision float files, with separate files for auto and cross correlations. Historically, these files have had suffixes ".LACSPC" and ".LCCSPC", but the files can be called anything. A simple and fast GPU-based correlator that generates this output format was also used in MWA 32T days, [found here](https://github.com/MWATelescope/corr_GPU).
 
 The implicit dimensions of the binary data in the autocorrelation file is [time][input][channel], where channel changes most quickly in the data and time most slowly.
 "input" here is a logical data input, so for dual polarisation antennas, there will be 2 inputs per antenna. A common ordering for "input" will thus be something like Ant1-X, Ant1-Y, Ant2-X, Ant2-Y etc.
