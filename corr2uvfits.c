@@ -2,9 +2,6 @@
  * UV FITS format. Written by Randall Wayth. Feb, 2008.
  *
  * August 12, 2011 - precess u, v, w, data to J2000 frame (Alan Levine)
-$Rev: 4135 $:     Revision of last commit
-$Author: rwayth $:  Author of last commit
-$Date: 2011-10-18 22:53:40 +0800 (Tue, 18 Oct 2011) $:    Date of last commit
 */
 
 #include <stdio.h>
@@ -25,7 +22,7 @@ $Date: 2011-10-18 22:53:40 +0800 (Tue, 18 Oct 2011) $:    Date of last commit
 /* private function prototypes */
 void printusage(const char *progname);
 int readScan(FILE *fp_ac, FILE *fp_cc,int scan,Header *header, InpConfig *inps,uvdata *data);
-void parse_cmdline(const int argc, char * const argv[], const char *optstring);
+void parse_cmdline(const int argc, char * const argv[]);
 void initData(uvdata *data);
 int applyHeader(Header *header, uvdata *data);
 void checkInputs(Header *header,uvdata *data,InpConfig *inputs);
@@ -42,13 +39,13 @@ char *configfilename="instr_config.txt";
 char *header_filename="header.txt";
 char *crosscor_filename=NULL;
 char *autocorr_filename=NULL;
+char *bothcorr_filename=NULL;
 char *flagfilename=NULL;
 static double arr_lat_rad=MWA_LAT*(M_PI/180.0),arr_lon_rad=MWA_LON*(M_PI/180.0),height=MWA_HGT;
 
 /************************
 ************************/
 int main(const int argc, char * const argv[]) {
-  const char optstring[] = "vldS:a:c:o:I:H:A:F:f:";
   FILE *fpin_ac=NULL,*fpin_cc=NULL;
   int i,scan=0,res=0;
   Header header;
@@ -62,7 +59,7 @@ int main(const int argc, char * const argv[]) {
   fpd=stderr;
 
   if(argc < 2) printusage(argv[0]);
-  parse_cmdline(argc,argv,optstring);
+  parse_cmdline(argc,argv);
   setConvDebugLevel(debug);
 
   /* initialise some values for the UV data array and antennas*/
@@ -97,17 +94,34 @@ int main(const int argc, char * const argv[]) {
   checkInputs(&header,data,&inputs);
 
   /* open input files */
-  if (header.corr_type!='A' && (fpin_cc=fopen(crosscor_filename,"r"))==NULL) {
-    fprintf(stderr,"cannot open cross correlation input file <%s>\n",crosscor_filename);
-    exit(1);
+  if (bothcorr_filename != NULL) {
+    /* this code to support the newer raw data file format that includes both autos and cross
+     * correlations in one file. Since we read sequentially and read in the order that is implicit in
+     * the new format, we can re-use the same file pointer */
+    fpin_cc=fopen(bothcorr_filename,"r");
+    if (fpin_cc==NULL) {
+        fprintf(stderr,"cannot open combined correlation input file <%s>\n",bothcorr_filename);
+        exit(1);
+    }
+    fpin_ac = fpin_cc; // re-use file pointer, need to ensure subsequent reads are in the implied order
   }
-  if (header.corr_type!='C' && (fpin_ac=fopen(autocorr_filename,"r"))==NULL) {
-    fprintf(stderr,"cannot open auto correlation input file <%s>\n",autocorr_filename);
-    exit(1);
+  else {
+    if (header.corr_type!='A' && (fpin_cc=fopen(crosscor_filename,"r"))==NULL) {
+        fprintf(stderr,"cannot open cross correlation input file <%s>\n",crosscor_filename);
+        exit(1);
+    }
+    if (header.corr_type!='C' && (fpin_ac=fopen(autocorr_filename,"r"))==NULL) {
+        fprintf(stderr,"cannot open auto correlation input file <%s>\n",autocorr_filename);
+        exit(1);
+    }
   }
 
   /* assign vals to output data structure from inputs */
   res = applyHeader(&header, data);
+  if (bothcorr_filename != NULL) {
+    fprintf(fpd,"Setting correlation type to S for combined (Single) file input\n");
+    header.corr_type='S';
+  }
 
   /* populate antenna info */
   if (debug) fprintf(fpd,"there are %d antennas\n",arraydat->n_ant);
@@ -209,9 +223,9 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
   double ant_u[MAX_ANT],ant_v[MAX_ANT],ant_w[MAX_ANT]; //u,v,w for each antenna, in meters
   int res=0,chan_ind,n_read,inp1,inp2;
   int scan=0,ac_chunk_index=0,cc_chunk_index=0;
-  size_t size_ac, size_cc;
+  size_t size_ac, size_cc, size_comb;
   float *ac_data=NULL,*visdata=NULL;
-  float complex *cc_data=NULL;
+  float complex *cc_data=NULL,*cc_temp=NULL;
 
   array = uvdata->array;
 
@@ -220,6 +234,13 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
     and n_inp*(n_inp-1)/2*nchan float complex cross correlations*/
   size_ac = uvdata->n_freq*header->n_inputs*sizeof(float);
   size_cc = uvdata->n_freq*header->n_inputs*(header->n_inputs-1)/2*sizeof(float complex);
+  /* if using a single combined auto/cross file, then autos have redundant imaginary components */
+  size_comb = uvdata->n_freq*header->n_inputs*(header->n_inputs+1)/2*sizeof(float complex);
+  
+  if (header->corr_type=='S') {
+    // handle special case of combined single input auto/cross file, which has redundant imag terms for autos
+    cc_temp = calloc(1,size_comb);
+  }
   ac_data = calloc(1,size_ac);
   cc_data = calloc(1,size_cc);
   assert(ac_data != NULL);
@@ -263,15 +284,49 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
   }
 
   /* read all the data for this timestep */
-  n_read = fread(cc_data,size_cc,1,fp_cc);
-  if (n_read != 1) {
-    fprintf(stderr,"EOF: reading cross correlations. Wanted to read %d bytes.\n",(int) size_cc);
-    return 1;
+  /* need to read autos first for the case of a combined single raw data input file,
+   * in which case the two file pointers will point to the same file */
+  if (header->corr_type=='S') {
+    n_read = fread(cc_temp,size_comb,1,fp_ac);
   }
-  n_read = fread(ac_data,size_ac,1,fp_ac);
+  else {
+    n_read = fread(ac_data,size_ac,1,fp_ac);
+  }
   if (n_read != 1) {
     fprintf(stderr,"EOF: reading auto correlations. Wanted to read %d bytes.\n",(int) size_ac);
     return 1;
+  }
+  if (header->corr_type!='S') {
+    n_read = fread(cc_data,size_cc,1,fp_cc);
+    if (n_read != 1) {
+        fprintf(stderr,"EOF: reading cross correlations. Wanted to read %d bytes.\n",(int) size_cc);
+        return 1;
+    }
+  }
+  else {
+    float complex *tmpvis,*tmpcc;
+    int prod_ind=0;
+    /* copy out the combined data into the original separate data structures for exisiting code below */
+    for(inp1=0; inp1 < header->n_inputs ; inp1++) {
+        for(inp2=inp1; inp2 < header->n_inputs ; inp2++) {
+            tmpvis = (cc_temp + header->n_chans*prod_ind);
+            if (inp1 != inp2) {
+                /* process a block of cross-correlations */
+                tmpcc = cc_data + header->n_chans*cc_chunk_index;
+                memcpy(tmpcc,tmpvis,header->n_chans*sizeof(float complex));
+                cc_chunk_index += 1;
+            }
+            else {
+                /* process a block of auto-correlations */
+                visdata = (ac_data + header->n_chans*ac_chunk_index);
+                for (int i=0; i<header->n_chans; i++) {
+                    visdata[i] = crealf(tmpvis[i]);
+                }
+                ac_chunk_index += 1;
+            }
+            prod_ind++;
+        }
+    }
   }
 
   /* set time of scan. Note that 1/2 scan time offset already accounted for in date[0]. */
@@ -288,6 +343,7 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
   if (res) return res;
 
   /* copy out the phase rotated data into the uvfits data structure */
+  ac_chunk_index=cc_chunk_index=0;
   for(inp1=0; inp1 < header->n_inputs ; inp1++) {
     for(inp2=inp1; inp2 < header->n_inputs ; inp2++) {
         float complex *cvis;
@@ -383,13 +439,15 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
 
   if (ac_data != NULL) free(ac_data);
   if (cc_data != NULL) free(cc_data);
+  if (cc_temp != NULL) free(cc_temp);
   return 0;
 }
 
 
 /****************************
 *****************************/
-void parse_cmdline(const int argc,char * const argv[], const char *optstring) {
+void parse_cmdline(const int argc,char * const argv[]) {
+    const char optstring[] = "vldS:a:c:o:I:H:A:F:f:b:";
     int result=0;
     char arrayloc[80],*lon,*lat;
 
@@ -405,8 +463,10 @@ void parse_cmdline(const int argc,char * const argv[], const char *optstring) {
             break;
           case 'c': crosscor_filename = optarg;
             break;
+          case 'b': bothcorr_filename = optarg;
+            break;
           case 'd': debug += 1;
-            fprintf(fpd,"Debugging on...\n");
+            fprintf(fpd,"Debugging level %d\n",debug);
             break;
           case 'I': configfilename = optarg;
             break;
@@ -470,6 +530,7 @@ void printusage(const char *progname) {
   fprintf(stderr,"options are:\n");
   fprintf(stderr,"-a filename\tThe name of autocorrelation data file. no default.\n");
   fprintf(stderr,"-c filename\tThe name of cross-correlation data file. no default.\n");
+  fprintf(stderr,"-b filename\tThe name of combined auto/cross data file. no default.\n");
   fprintf(stderr,"-o filename\tThe name of the output file. No default.\n");
   fprintf(stderr,"-S filename\tThe name of the file containing antenna name and local x,y,z. Default: %s\n",stationfilename);
   fprintf(stderr,"-I filename\tThe name of the file containing instrument config. Default: %s\n",configfilename);
@@ -478,9 +539,7 @@ void printusage(const char *progname) {
   fprintf(stderr,"-l         \tLock the phase center to the initial HA/DEC\n");
   fprintf(stderr,"-f mode    \tturn on automatic flagging. Requires autocorrelations\n");
   fprintf(stderr,"\t\t0:\tno flagging\n");
-  fprintf(stderr,"\t\t1:\tgeneric flagging\n");
-  fprintf(stderr,"\t\t2:\tspecial treatment for MWA edge channels, 40kHz case\n");
-  fprintf(stderr,"\t\t3:\tspecial treatment for MWA edge channels, 10kHz case\n");
+  fprintf(stderr,"\t\t1:\tgeneric flagging based on autocorrelation median\n");
   fprintf(stderr,"-F filename\tOptionally apply global flags as specified in filename.\n");
   fprintf(stderr,"-d         \tturn debugging on.\n");
   fprintf(stderr,"-v         \treturn revision number and exit.\n");
