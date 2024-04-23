@@ -103,7 +103,6 @@ int main(const int argc, char * const argv[]) {
         fprintf(stderr,"cannot open combined correlation input file <%s>\n",bothcorr_filename);
         exit(1);
     }
-    fpin_ac = fpin_cc; // re-use file pointer, need to ensure subsequent reads are in the implied order
   }
   else {
     if (header.corr_type!='A' && (fpin_cc=fopen(crosscor_filename,"r"))==NULL) {
@@ -287,23 +286,11 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
   /* need to read autos first for the case of a combined single raw data input file,
    * in which case the two file pointers will point to the same file */
   if (header->corr_type=='S') {
-    n_read = fread(cc_temp,size_comb,1,fp_ac);
-  }
-  else {
-    n_read = fread(ac_data,size_ac,1,fp_ac);
-  }
-  if (n_read != 1) {
-    fprintf(stderr,"EOF: reading auto correlations. Wanted to read %d bytes.\n",(int) size_ac);
-    return 1;
-  }
-  if (header->corr_type!='S') {
-    n_read = fread(cc_data,size_cc,1,fp_cc);
+    n_read = fread(cc_temp,size_comb,1,fp_cc);
     if (n_read != 1) {
-        fprintf(stderr,"EOF: reading cross correlations. Wanted to read %d bytes.\n",(int) size_cc);
+        fprintf(stderr,"EOF: reading combo data. Wanted to read %d bytes.\n",(int) size_comb);
         return 1;
     }
-  }
-  else {
     float complex *tmpvis,*tmpcc;
     int prod_ind=0;
     /* copy out the combined data into the original separate data structures for exisiting code below */
@@ -328,6 +315,22 @@ int readScan(FILE *fp_ac, FILE *fp_cc,int scan_count, Header *header, InpConfig 
         }
     }
   }
+  else {
+    n_read = fread(ac_data,size_ac,1,fp_ac);
+  
+    if (n_read != 1) {
+        fprintf(stderr,"EOF: reading auto correlations. Wanted to read %d bytes.\n",(int) size_ac);
+        return 1;
+    }
+
+    n_read = fread(cc_data,size_cc,1,fp_cc);
+    if (n_read != 1) {
+        fprintf(stderr,"EOF: reading cross correlations. Wanted to read %d bytes.\n",(int) size_cc);
+        return 1;
+    }
+  }
+
+
 
   /* set time of scan. Note that 1/2 scan time offset already accounted for in date[0]. */
   if (scan_count > 0) uvdata->date[scan] = date_zero + scan_count*header->integration_time/86400.0;
