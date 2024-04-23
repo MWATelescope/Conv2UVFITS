@@ -1,0 +1,42 @@
+
+2024-04-23: Test update to code to read single combined auto/cross data file
+
+- make some test data, using the example "make_test_data.txt" in corr_GPU.
+
+
+python3
+import numpy
+
+n_inp=64
+n_time=10000  # this matches the default settings of 10000 times per average and 128 channels.
+n_chan=128
+snr=0.1
+#snr=10.0
+sig=numpy.random.normal(scale=numpy.sqrt(snr),size=n_time*n_chan*2)
+
+d=numpy.zeros((n_time*n_chan*2,n_inp),dtype=numpy.float32)
+
+for i in range(n_inp):
+    d[:,i] = numpy.random.normal(size=n_time*n_chan*2) + sig
+
+numpy.round(d*16).astype(numpy.int8).tofile('/tmp/corrtest.dat')
+
+
+# run through a correlator
+# make single output file version and traditional L-files version
+
+./corr_gpu_complex -c 32 -n 64 -w 10 -i /tmp/corrtest.dat -p T -o /tmp/testout
+./corr_gpu_complex -c 32 -n 64 -w 10 -i /tmp/corrtest.dat -p B -o /tmp/testout
+
+
+#  these written to files /tmp/testout.L?CSPC and /tmp/testout.ACC
+  
+# generate uvfits files
+
+../corr2uvfits -b /tmp/testout.ACC -o test_comb.uvfits -S antenna_locations_32T.txt -I instr_config_32T_example.txt -H header_32T_example_comb.txt
+
+../corr2uvfits -a /tmp/testout.LACSPC -c /tmp/testout.LCCSPC -o test_orig.uvfits -S antenna_locations_32T.txt -I instr_config_32T_example.txt -H header_32T_example_orig.txt
+
+# test file difference with diff: should be identical
+diff test_orig.uvfits test_comb.uvfits
+
