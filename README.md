@@ -34,7 +34,7 @@ Cross correlations are single precision float complex numbers. The implicit orde
 Note that the code does not read ahead or look at the size of the input data, so named pipes can be used for the .LACSPC and .LCCSPC files to avoid creating intermediate files if desired in a streaming environment.
 
 As of April 2024, this now supports a new combined single auto/cross file format, which is the usual upper triangluar matrix where autocorrelations are still stored as a complex number, usually with zero or small imaginary component. 
-This is the same format as the output of the GPU correlator mentioned above with single combined output format selected.
+This is the same format as the output of the GPU correlator mentioned above with single combined output format selected.  The implicit dimensions of the output data are [time][product][channel] where there are now N(N+1)/2 products.
 
 ## Example usage
 run the program with no command-line arguments for a usage summary.
