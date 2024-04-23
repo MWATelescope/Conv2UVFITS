@@ -12,8 +12,6 @@ Ubuntu packages: libcfitsio-dev libstarlink-pal-dev build-essential
 ## Compiling
 make corr2uvfits
 
-run the program with no command-line arguments for a usage summary.
-
 ## Metadata
 There are 3 metadata input files required:
 
@@ -35,5 +33,13 @@ Cross correlations are single precision float complex numbers. The implicit orde
 
 Note that the code does not read ahead or look at the size of the input data, so named pipes can be used for the .LACSPC and .LCCSPC files to avoid creating intermediate files if desired in a streaming environment.
 
-## Example usage
+As of April 2024, this now supports a new combined single auto/cross file format, which is the usual upper triangluar matrix where autocorrelations are still stored as a complex number, usually with zero or small imaginary component. 
+This is the same format as the output of the GPU correlator mentioned above with single combined output format selected.
 
+## Example usage
+run the program with no command-line arguments for a usage summary.
+
+Some example files and an example script to generate test voltages and correlate them are in the "TEST" directory.
+An example usage might be:
+
+`./corr2uvfits -a /tmp/testout.LACSPC -c /tmp/testout.LCCSPC -o test_orig.uvfits -S antenna_locations_32T.txt -I instr_config_32T_example.txt -H header_32T_example_orig.txt`
